@@ -42,7 +42,6 @@ public class EventServiceImpl implements com.selenium.data.module.service.EventS
 		@Resource(name = "eventMapper")
 	    private EventMapper eventDAO;
 
-		// 한전 파워플래너 사용량 크롤링 등록
 		public void powerPlanerUsageCrawling() throws Exception{
 			crawl(); // 크롤링 및 데이터 등록
 		}
