@@ -1,4 +1,4 @@
-package com.jongha.data.module.service.impl;
+package com.selenium.data.module.service.impl;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -25,7 +25,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 @Service("eventService")
-public class EventServiceImpl implements com.jongha.data.module.service.EventService{
+public class EventServiceImpl implements com.selenium.data.module.service.EventService{
 
 	
 		private WebDriver driver;

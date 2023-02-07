@@ -1,4 +1,4 @@
-package com.jongha.data.module.controller;
+package com.selenium.data.module.controller;
 
 import javax.annotation.Resource;
 
@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 
-import com.jongha.data.module.service.EventService;
+import com.selenium.data.module.service.EventService;
 
 @Controller("EventController")
 public class EventController {
