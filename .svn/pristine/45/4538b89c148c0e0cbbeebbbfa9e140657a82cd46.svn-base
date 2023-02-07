@@ -1,0 +1,112 @@
+package com.elsys.data.util;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Random;
+
+import org.json.simple.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+
+
+//import egovframework.com.cmm.service.EgovProperties;
+
+public class PushUtil {
+	
+	private StrUtil sut = new StrUtil();
+
+	public String sendPush(String token, String title, String msg, String link,String pushIdx) throws Exception {
+		return sendPush(token, null, title, msg, link, null, pushIdx);
+	}
+	
+	/**
+	 * PUSH 발송
+	 *
+	 * @param token 	필수-토큰
+	 * @param sendTp	
+	 * @param title		필수-PUSH 제목
+	 * @param msg		필수-PUSH 내용
+	 * @param link		옵션-링크
+	 * @param imgUrl	옵션-이미지 URL
+	 * @param pushIdx	필수-pushIdx
+	 * @return
+	 * @throws Exception
+	 */
+	public String sendPush(String token, String sendTp, String title, String msg, String link, String imgUrl, String pushIdx) throws Exception {
+		ArrayList<String> regid = new ArrayList<String>();
+		Random random = new Random();
+        int MESSAGE_ID = random.nextInt(100);     //메시지 고유 ID
+		boolean SHOW_ON_IDLE = false;	//기기가 활성화 상태일때 보여줄것인지
+		int LIVE_TIME = 1;	//기기가 비활성화 상태일때 GCM가 메시지를 유효화하는 시간
+		int RETRY = 2;	//메시지 전송실패시 재시도 횟수
+
+		String simpleApiKey = "AAAA-N7ubbw:APA91bEQemhrp8_I0NahluGAqlIxYJzEUpiMhmu-17yfFzE5_dEQN41tAcEzCpv2UVUqBFiEcwvPMCLvBaqpO74BoHA2QbYg83rQFIB9LYGC5Nf0k0jnZljaHHvXJWS_BNr0twt5-b9U";
+
+		String fcmURL = "https://fcm.googleapis.com/fcm/send";
+
+		URL url = new URL(fcmURL);
+		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+
+		conn.setUseCaches(false);
+		conn.setDoInput(true);
+		conn.setDoOutput(true);
+
+		conn.setRequestMethod("POST");
+		conn.setRequestProperty("Authorization","key="+simpleApiKey);
+		conn.setRequestProperty("Content-Type","application/json");
+		conn.setRequestProperty("cache-control","no-cache");
+
+		JSONObject json = new JSONObject();
+		json.put("to",token);
+		json.put("time_to_live", 60);
+		JSONObject data = new JSONObject();
+		data.put("title", title);
+		data.put("sendTp", sendTp);
+		data.put("msg", msg);
+		data.put("link", link);
+		data.put("pushIdx", pushIdx);
+		data.put("msgId", MESSAGE_ID);
+		if(!"".equals(imgUrl)){
+			data.put("imgUrl", imgUrl);
+		}
+		json.put("data", data);
+
+
+		JSONObject notification = new JSONObject();
+
+		notification.put("title", title);
+		notification.put("body", msg);
+		notification.put("sound", "default");
+		json.put("notification", notification);
+
+
+		try(OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream())){
+			//혹시나 한글 깨짐이 발생하면
+			//try(OutputStreamWriter wr = new OutputStreamWriter(conn.getOutputStream(), "UTF-8")){ 인코딩을 변경해준다.
+
+			wr.write(json.toString());
+			wr.flush();
+		} catch(Exception e) {
+
+		}
+
+		if (conn.getResponseCode() != HttpURLConnection.HTTP_OK) {
+			throw new RuntimeException("Failed : HTTP error code : " + conn.getResponseCode());
+		}
+
+		BufferedReader br = new BufferedReader(new InputStreamReader(
+				(conn.getInputStream())));
+		String retStr = "";
+		String output = "";
+		while ((output = br.readLine()) != null) {
+			retStr += output;
+		}
+
+		conn.disconnect();
+		return retStr;
+	}
+}

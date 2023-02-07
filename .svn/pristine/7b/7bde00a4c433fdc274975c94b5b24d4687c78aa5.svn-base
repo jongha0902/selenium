@@ -1,0 +1,309 @@
+package com.elsys.data.util;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Scanner;
+import java.util.Set;
+
+/**
+*
+* Class Name : HttpUtil
+* Description
+*    http를 사용하여 원격 서버와 통신.
+*    POST, GET, DELETE method 지원
+*    Request Header 설정 지원.
+*    POST일 경우 Request Body 설정 지원.
+* Notification
+*    다른 프로젝트에서 사용할 경우 callServer()를 override해서 사용할 것.
+*    다른 프로젝트에서 사용할 경우 아래에 사용된 StrUtil().getStr()를 아래와 같이 정의해서 사용할 것.
+*    public String getStr(Object obj) {
+*        return obj == null ? "" : String.valueOf(obj).trim();
+*    }
+* Modification Information
+*   수정일                         수정자        수정내용
+*  ----------------------------
+*  2017. 02. 20  okw   최초 생성
+*
+* @author ICT융합사업부 okw
+* @since 2017. 02. 20
+* @version 1.0
+* @see HttpURLConnection
+*
+*/
+
+public class HttpUtil {
+	public StrUtil sut = new StrUtil();
+
+	private HttpURLConnection conn;
+	private String url;
+	private String method;
+	private int connectionTimeout;
+	private int readTimeout;
+	private HashMap<String,String> property;
+	private String body;
+
+	/* constructor */
+	public HttpUtil(String url) {
+		setUrl(url);
+		setMethod("POST");
+		setConnectionTimeout(10000);
+		setReadTimeout(10000);
+	}
+
+	public HttpUtil(String url, String method) {
+		setUrl(url);
+		setMethod(method);
+		setConnectionTimeout(10000);
+		setReadTimeout(10000);
+	}
+
+	public HttpUtil(String url, String method, int timeout) {
+		setUrl(url);
+		setMethod(method);
+		setConnectionTimeout(timeout);
+		setReadTimeout(timeout);
+	}
+
+	/**
+	 * callServer
+	 *    http 통신 실행. http 통신연결과 실행, 그리고 응답을 처리한다.
+	 *    다른곳에서 사용할 경우 오버라이딩 해서 사용하기 바람.
+	 *    아래 코드에서 checkResponseM2M()은 oneM2M 서버의 응답이 올바른지 확인하기 위해서 커스터마이징 된 기능이다.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 02. 20
+	 * @param
+	 * @return HashMap<String,String>
+	 *    state : success / fail. 통신결과
+	 *    error_code : 에러코드. 추후 기능 확장을 위함.
+	 *    error_mesg : 에러메시지
+	 *    response : 응답결과
+	 */
+	public HashMap<String,String> callServer() throws Exception {
+		HashMap<String,String> result = new HashMap<String,String>();
+		result.put("state", "fail");
+		result.put("error_code", ""); // 추후 기능 확장을 위함.
+		result.put("error_mesg", "");
+		result.put("response", "");
+
+    	try {
+    		httpConnect();
+    		httpRequest();
+    		String response = sut.getStr(httpResponse());
+			result.put("response", response);
+    		if("".equals(response)) {
+    			result.put("error_mesg", "Response is empty.");
+    		} else {
+    			// Specified oneM2M Server communication.
+    			if(true == checkResponseM2M()) {
+    				result.put("state", "success");
+    			} else {
+        			result.put("error_mesg", "oneM2M server response is wrong.");
+    			}
+    		}
+    	} catch(MalformedURLException e) {
+    		e.printStackTrace();
+			result.put("error_mesg", "The URL address is wrong.");
+    	} catch(IOException e) {
+    		e.printStackTrace();
+			result.put("error_mesg", "Web page is not worked.");
+    	} catch(Exception e) {
+    		e.printStackTrace();
+    		result.put("error_mesg", "Connection fail.");
+    	} finally {
+    		conn.disconnect();
+    	}
+
+		return result;
+	}
+
+	/**
+	 * checkResponseM2M
+	 *    Customized on oneM2M Server communication.
+	 *    oneM2M 서버의 응답 헤더 중  X-M2M-RSC가 2000, 2001, 2002이 아닐 경우 에러처리.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 02. 20
+	 * @param
+	 * @return boolean
+	 */
+	private boolean checkResponseM2M() {
+		boolean result = false;
+		String headerCheck = sut.getStr(getResponseHeader("X-M2M-RSC"));
+		if("2000".equals(headerCheck)) result = true; // 조회
+		if("2001".equals(headerCheck)) result = true; // 생성
+		if("2002".equals(headerCheck)) result = true; // 삭제
+
+		return result;
+	}
+
+	/**
+	 * httpConnect
+	 *    설정된 정보로 http 통신을 연결한다.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 02. 20
+	 * @param
+	 * @return void
+	 */
+	protected void httpConnect() throws MalformedURLException, IOException {
+		URL url = new URL(getUrl());
+		conn = (HttpURLConnection) url.openConnection();
+
+		conn.setDoInput(true);
+		conn.setDoOutput(true);
+		conn.setRequestMethod(getMethod());
+		conn.setConnectTimeout(getConnectionTimeout());
+		conn.setReadTimeout(getReadTimeout());
+		conn.setUseCaches(false);
+
+		setRequestProperty();
+	}
+
+	/**
+	 * setRequestProperty
+	 *    Request Header에 정의된 property를 설정한다.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 02. 20
+	 * @param
+	 * @return void
+	 */
+	protected void setRequestProperty() {
+		HashMap<String,String> buffer = getProperty();
+		if(buffer != null) {
+			Set<Entry<String, String>> set = buffer.entrySet();
+			Iterator<Entry<String, String>> iter = set.iterator();
+			while (iter.hasNext()) {
+				Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
+				conn.setRequestProperty(entry.getKey(), entry.getValue());
+			}
+		}
+	}
+
+	/**
+	 * httpRequest
+	 *    Request Body가 있을 경우 body에 메시지를 세팅한 후 원격 서버에 요청한다.
+	 *    request body에 메시지를 보내기 위해서는 반드시 POST method를 사용해야 하며, GET method일 경우 body에 메시지를 보내더라도 통신규약 상 유효하지 않다.
+	 *    따라서 httpRequest를 사용하기 위해서는 POST method를 사용해야 한다.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 02. 20
+	 * @param
+	 * @return void
+	 */
+	protected void httpRequest() throws IOException {
+		String content = sut.getStr(getBody());
+		if(!"".equals(content)) {
+	    	DataOutputStream out = null;
+	    	try {
+	    		out = new DataOutputStream(conn.getOutputStream());
+	    		out.writeBytes(content);
+	    		out.flush();
+	    	} finally {
+	    		if(out != null) out.close();
+	    	}
+		}
+	}
+
+	/**
+	 * httpResponse
+	 *    http 요청 후에 원격서버의 응답 메시지를 받는다.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 02. 20
+	 * @param
+	 * @return String
+	 */
+	protected String httpResponse() throws IOException {
+		/*
+		String buffer = "";
+		Scanner scan = null;
+		
+		try {
+			scan = new Scanner(conn.getInputStream());
+			while(scan.hasNext()) buffer += scan.nextLine();
+		} catch(Exception e) {
+			e.printStackTrace();
+		} finally {
+			scan.close();
+		}
+    	return buffer;
+    	*/
+		
+		//서버읍답이 정상(responseCode : 200)일 경우에만 처리하도록 변경 - 20180322
+		String buffer = "";
+		
+		try {
+			if("200".equals(sut.getStr(conn.getResponseCode()))){
+				Scanner scan = null;
+				scan = new Scanner(conn.getInputStream());
+				while(scan.hasNext()) buffer += scan.nextLine();
+				scan.close();
+			}
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		
+    	return buffer;
+	}
+
+	/**
+	 * getResponseHeader
+	 *    원격서버의 응답 메시지 헤더에서 속성값을 뽑아온다.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 02. 20
+	 * @param
+	 * @return String
+	 */
+	protected String getResponseHeader(String fieldName) {
+		return conn.getHeaderField(fieldName);
+	}
+
+	/* getter and setter */
+	public String getUrl() {
+		return url;
+	}
+	public void setUrl(String url) {
+		this.url = url;
+	}
+	public String getMethod() {
+		return method;
+	}
+	public void setMethod(String method) {
+		this.method = method;
+	}
+	public int getConnectionTimeout() {
+		return connectionTimeout;
+	}
+	public void setConnectionTimeout(int connectionTimeout) {
+		this.connectionTimeout = connectionTimeout;
+	}
+	public int getReadTimeout() {
+		return readTimeout;
+	}
+	public void setReadTimeout(int readTimeout) {
+		this.readTimeout = readTimeout;
+	}
+	public HttpURLConnection getConn() {
+		return conn;
+	}
+	public void setConn(HttpURLConnection conn) {
+		this.conn = conn;
+	}
+	public HashMap<String, String> getProperty() {
+		return property;
+	}
+	public void setProperty(HashMap<String, String> property) {
+		this.property = property;
+	}
+	public String getBody() {
+		return body;
+	}
+	public void setBody(String body) {
+		this.body = body;
+	}
+
+
+}

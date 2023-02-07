@@ -1,0 +1,11 @@
+package com.elsys.data.module.service;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+
+public interface EventService {
+
+	// 한전 파워플래너 사용량 크롤링 등록
+	public void powerPlanerUsageCrawling() throws Exception;
+	/****************************************************************************************/
+}

@@ -1,0 +1,2 @@
+#!/bin/bash
+java -jar power_planer_crawling.jar & echo $! > ./pid.file &

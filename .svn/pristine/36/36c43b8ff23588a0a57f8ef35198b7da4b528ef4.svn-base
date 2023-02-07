@@ -1,0 +1,249 @@
+package com.elsys.data.util;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Properties;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
+
+public class ApiUtil {
+	
+	private static final Logger log = LoggerFactory.getLogger(ApiUtil.class);
+	
+	/* properties 파일의 정보를 가져오기 위해 선언 */
+	@Autowired
+	Environment enviroment;
+	
+	public String getApiPrefix(){			
+		
+		String prefix="";
+		
+		try{
+			URL resourceURL = Thread.currentThread().getContextClassLoader().getResource("application.properties");
+			Properties properties = new Properties(); 
+			properties.load(resourceURL.openStream());
+			prefix = (String) properties.getProperty("API_PREFIX");
+		}catch(Exception e){
+			e.printStackTrace();
+		}
+		
+		return  prefix;
+	}
+	
+	// Integer 리턴이 필요한 경우 사용할 API 메소드
+	@SuppressWarnings("unchecked")
+	public int apiGetInt(String strUrl,HashMap paramMap){
+		
+		int returnInt = 0;
+		
+		try{			
+			
+			String paramStr = "";
+			if( !paramMap.isEmpty() ){
+				Iterator<String> keys = paramMap.keySet().iterator();
+		        
+		        while( keys.hasNext() ){
+		            String key = keys.next();
+		            if(paramMap.get(key)!=null){
+		            	if(paramStr.equals("")){
+		            		paramStr+="?"+key+"="+URLEncoder.encode(paramMap.get(key).toString(),"UTF-8");
+		            	}else{
+		            		paramStr+= "&"+key +"="+URLEncoder.encode(paramMap.get(key).toString(),"UTF-8");
+		            	}
+		            }
+		        }
+			}
+			URL url = new URL( getApiPrefix()+strUrl + paramStr );
+			HttpURLConnection con = (HttpURLConnection) url.openConnection(); 
+			con.setConnectTimeout(5000); //서버에 연결되는 Timeout 시간 설정
+			con.setReadTimeout(5000); // InputStream 읽어 오는 Timeout 시간 설정
+		
+			//con.addRequestProperty("x-api-key", RestTestCommon.API_KEY); //key값 설정
+	
+			con.setRequestMethod("GET");
+				
+	        con.setDoOutput(false); 
+	        
+			StringBuilder sb = new StringBuilder();
+			if (con.getResponseCode() == HttpURLConnection.HTTP_OK) {
+				//Stream을 처리해줘야 하는 귀찮음이 있음. 
+				BufferedReader br = new BufferedReader(
+						new InputStreamReader(con.getInputStream(), "utf-8"));
+				String line;
+				while ((line = br.readLine()) != null) {
+					sb.append(line).append("\n");
+				}
+				br.close();
+				
+				try { 
+					JSONParser jsonParse = new JSONParser(); 
+					
+					JSONObject jsonObj = (JSONObject) jsonParse.parse( ""+sb.toString() ); //JSONParse에 json데이터를 넣어 파싱한 다음 JSONObject로 변환한다. 
+
+					returnInt = (Integer)Integer.parseInt(jsonObj.get("result").toString());
+				} catch (ParseException e) {
+					e.printStackTrace(); 
+				}
+				
+			} else {
+				System.out.println(con.getResponseMessage());
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			log.info("===================================Api Map 요청중 오류발생===================================");
+		}
+		
+		return returnInt;
+	}
+	
+	// HashMap 리턴이 필요한 경우 사용할 API 메소드
+	@SuppressWarnings("unchecked")
+	public HashMap<String,Object> apiGetMap(String strUrl,HashMap paramMap){
+		
+		HashMap<String,Object> returnMap = new HashMap<String,Object>();
+		
+		try{			
+			
+			String paramStr = "";
+			if( !paramMap.isEmpty() ){
+				Iterator<String> keys = paramMap.keySet().iterator();
+		        
+		        while( keys.hasNext() ){
+		            String key = keys.next();
+		            if(paramMap.get(key)!=null){
+		            	if(paramStr.equals("")){
+		            		paramStr+="?"+key+"="+URLEncoder.encode(paramMap.get(key).toString(),"UTF-8");
+		            	}else{
+		            		paramStr+= "&"+key +"="+URLEncoder.encode(paramMap.get(key).toString(),"UTF-8");
+		            	}
+		            }
+		        }
+			}
+			
+			URL url = new URL( getApiPrefix()+strUrl + paramStr);
+			HttpURLConnection con = (HttpURLConnection) url.openConnection(); 
+			con.setConnectTimeout(5000); //서버에 연결되는 Timeout 시간 설정
+			con.setReadTimeout(5000); // InputStream 읽어 오는 Timeout 시간 설정
+		
+			//con.addRequestProperty("x-api-key", RestTestCommon.API_KEY); //key값 설정
+	
+			con.setRequestMethod("GET");
+				
+	        con.setDoOutput(false); 
+	        
+			StringBuilder sb = new StringBuilder();
+			if (con.getResponseCode() == HttpURLConnection.HTTP_OK) {
+				//Stream을 처리해줘야 하는 귀찮음이 있음. 
+				BufferedReader br = new BufferedReader(
+						new InputStreamReader(con.getInputStream(), "utf-8"));
+				String line;
+				while ((line = br.readLine()) != null) {
+					sb.append(line).append("\n");
+				}
+				br.close();
+				
+				try { 
+					JSONParser jsonParse = new JSONParser(); 
+					
+					JSONObject jsonObj = (JSONObject) jsonParse.parse( ""+sb.toString() ); //JSONParse에 json데이터를 넣어 파싱한 다음 JSONObject로 변환한다. 
+
+					returnMap = (HashMap<String, Object>)jsonObj.get("result");
+				} catch (ParseException e) {
+					e.printStackTrace(); 
+				}
+				
+			} else {
+				System.out.println(con.getResponseMessage());
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			log.info("===================================Api Map 요청중 오류발생===================================");
+		}
+		
+		return returnMap;
+	}
+	
+	// ArrayList 리턴이 필요한 경우 사용할 API 메소드
+	@SuppressWarnings("unchecked")
+	public ArrayList<HashMap<String,Object>> apiGetArray(String strUrl,HashMap paramMap){
+		
+		ArrayList<HashMap<String,Object>> returnArray = new ArrayList<HashMap<String,Object>>();
+		
+		try{			
+			String paramStr = "";
+			if( !paramMap.isEmpty() ){
+				Iterator<String> keys = paramMap.keySet().iterator();
+		        
+		        while( keys.hasNext() ){
+		            String key = keys.next();
+		            if(paramMap.get(key)!=null){
+		            	if(paramStr.equals("")){
+		            		paramStr+="?"+key+"="+URLEncoder.encode(paramMap.get(key).toString(),"UTF-8");
+		            	}else{
+		            		paramStr+= "&"+key +"="+URLEncoder.encode(paramMap.get(key).toString(),"UTF-8");
+		            	}
+		            }
+		        }
+			}
+			
+			URL url = new URL( getApiPrefix() + strUrl + paramStr );
+			HttpURLConnection con = (HttpURLConnection) url.openConnection(); 
+			con.setConnectTimeout(5000); //서버에 연결되는 Timeout 시간 설정
+			con.setReadTimeout(5000); // InputStream 읽어 오는 Timeout 시간 설정
+			
+			//con.addRequestProperty("x-api-key", RestTestCommon.API_KEY); //key값 설정
+	
+			con.setRequestMethod("GET");
+				
+	        con.setDoOutput(false); 
+	        
+			StringBuilder sb = new StringBuilder();
+			if (con.getResponseCode() == HttpURLConnection.HTTP_OK) {
+				//Stream을 처리해줘야 하는 귀찮음이 있음. 
+				BufferedReader br = new BufferedReader(
+						new InputStreamReader(con.getInputStream(), "utf-8"));
+				String line;
+				while ((line = br.readLine()) != null) {
+					sb.append(line).append("\n");
+				}
+				br.close();
+				
+				try { 
+					JSONParser jsonParse = new JSONParser(); 					
+					JSONObject jsonObj = (JSONObject) jsonParse.parse( ""+sb.toString() ); //JSONParse에 json데이터를 넣어 파싱한 다음 JSONObject로 변환한다. 					
+					returnArray = (ArrayList<HashMap<String, Object>>)jsonObj.get("result");
+				} catch (ParseException e) {
+					e.printStackTrace(); 
+				}
+				
+			} else {
+				System.out.println(con.getResponseMessage());
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			log.info("===================================Api Array 요청중 오류발생===================================");
+		}
+		
+		return returnArray;
+	}
+}

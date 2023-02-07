@@ -1,0 +1,23 @@
+# MYSQL \uacf5\ud1b5
+Globals.DbType=mysql
+#log4jdbc \uc801\uc6a9 \ubc29\uc2dd
+Globals.DriverClassName=net.sf.log4jdbc.DriverSpy
+#log4jdbc \uc81c\uc678 \ubc29\uc2dd
+#Globals.DriverClassName=com.mysql.jdbc.Driver
+Globals.MaxActive=20
+Globals.MaxIdle=5
+Globals.MaxWait=10000
+
+#log4jdbc \uc801\uc6a9 \ubc29\uc2dd
+
+#local DB
+#Globals.Url=jdbc:mysql://localhost:3306/power_planner?characterEncoding=UTF-8&allowMultiQueries=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10&useSSL=false&serverTimezone=UTC
+
+#Globals.UserName = root
+#Globals.Password = elsysaa!@#123
+
+# \uc2e4\uc11c\ubc84 DB
+Globals.Url=jdbc:mysql://192.168.20.46:3306/power_planner?characterEncoding=UTF-8&allowMultiQueries=true&autoReconnect=true&failOverReadOnly=false&maxReconnects=10&useSSL=false&serverTimezone=UTC&validationQuery=select 1
+
+Globals.UserName = teamdev4
+Globals.Password = dev4#$

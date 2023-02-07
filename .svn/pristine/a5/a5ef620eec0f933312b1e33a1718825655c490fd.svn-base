@@ -1,0 +1,1 @@
+java -jar etoc_measure_data.jar

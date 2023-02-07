@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.elsys.data.module.service.impl.EventMapper">
+
+	<select id="getLastCheckTime" resultType="paramMap" parameterType="paramMap">
+		<![CDATA[
+			SELECT 
+					LAST_CHECK_TIME
+					,substring(LAST_CHECK_TIME,11,2) AS LAST_CHECK_DAY
+			  FROM
+			  		TB_PLANNERDATA_15MIN
+			 WHERE
+			 		concat(substring(LAST_CHECK_TIME,1,4),'-',substring(LAST_CHECK_TIME,7,2),'-',substring(LAST_CHECK_TIME,11,2))=DATE_FORMAT(NOW(),'%Y-%m-%d')
+		  ORDER BY
+					LAST_CHECK_TIME DESC
+			 LIMIT  1		
+		]]>	
+	</select>
+	
+	<select id="getYesterDayDBLastHourMin" resultType="paramMap" parameterType="paramMap">
+		<![CDATA[
+			SELECT 
+					LAST_CHECK_TIME
+					,LOG_TIME
+			  FROM
+			  		TB_PLANNERDATA_15MIN
+			 WHERE
+			 		concat(substring(LAST_CHECK_TIME,1,4),'-',substring(LAST_CHECK_TIME,7,2),'-',substring(LAST_CHECK_TIME,11,2))=DATE_FORMAT(DATE_SUB(NOW(),INTERVAL 1 DAY),'%Y-%m-%d')
+		  ORDER BY
+					LAST_CHECK_TIME DESC
+			 LIMIT  1
+		]]>	
+	</select>
+
+	<insert id="powerPlanerUsageCrawling" parameterType="paramMap">
+		<![CDATA[
+			INSERT INTO TB_PLANNERDATA_15MIN
+			(
+				LOG_DAY,
+				LOG_TIME,
+				LOG_HOUR,
+				LOG_MIN,
+				USE_KWH,
+				MAX_USE_KWH,
+				LAG_REACT_POWER,
+				LEAD_REACT_POWER,
+				CO2,
+				LAG_POWER_FACTOR,
+				LEAD_POWER_FACTOR,
+				LAST_CHECK_TIME,
+				REG_DT
+			)
+			VALUES
+			(
+				#{targetDate},
+				#{targetTime},
+				#{targetHour},
+				#{targetMin},
+				#{useKwh},
+				#{maxUseKwh},
+				#{lagReactPower},
+				#{leadReactPower},
+				#{co2},
+				#{lagPowerFactor},
+				#{leadPowerFactor},
+				#{lastCheckTime},
+				NOW()
+			)
+		]]>	
+	</insert>
+
+</mapper>

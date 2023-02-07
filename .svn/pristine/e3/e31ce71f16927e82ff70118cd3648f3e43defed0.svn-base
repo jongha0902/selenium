@@ -1,0 +1,32 @@
+OS_TYPE=WINDOWS
+#SERVER_ADDR=http://192.168.10.81:7579
+
+# \uc6f9\ub4dc\ub77c\uc774\ubc84 \uc885\ub958
+WEB_DRIVER_ID = webdriver.chrome.driver
+
+# \ud074\ub77c\uc774\uc5b8\ud2b8 PC \uc6f9\ub4dc\ub77c\uc774\ubc84\uc124\uce58 \uacbd\ub85c
+WEB_DRIVER_PATH =C:\\workspace\\workspace_2020\\selenium\\chromedriver_win32\\chromedriver.exe
+#WEB_DRIVER_PATH =/usr/local/bin/chromedriver
+
+# \ud30c\uc6cc\ud50c\ub798\ub108 \uacc4\uc815\uc815\ubcf4
+
+# \uc0bc\uc6b0\uc5d0\ucf54 \ubc30\uc804\ubc181
+#powerPlannerId=0330637627
+#powerPlannerPass=samwoo02!@
+
+# \uc0bc\uc6b0\uc5d0\ucf54 \ubc30\uc804\ubc182
+#powerPlannerId=0322083525
+#powerPlannerPass=samwoo02!@
+
+# \uc0bc\uc6b0\uc5d0\ucf54 \ubc30\uc804\ubc183
+#powerPlannerId=0322083507
+#powerPlannerPass=samwoo02!@
+
+# DSR
+#powerPlannerId=0334138348
+#powerPlannerPass=dsr3700
+
+#\ud504\ub9ad\uc0ac
+powerPlannerId=0322081974
+powerPlannerPass=a0612167!
+

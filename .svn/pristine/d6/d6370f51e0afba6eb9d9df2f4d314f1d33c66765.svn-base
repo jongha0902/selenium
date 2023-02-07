@@ -1,0 +1,19 @@
+package com.elsys.data.module.service.impl;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface EventMapper {
+	
+	// 한전 파워플래너 사용량 크롤링 등록
+	public void powerPlanerUsageCrawling(HashMap<String,Object> map) throws Exception;
+	
+	// 적재된 데이터의 마지막 검침시간을 가져오기 위함
+	public HashMap<String,Object> getLastCheckTime(HashMap<String,Object> map) throws Exception;
+	
+	// 어제 db의 마지막 데이터 시간 체크
+	public HashMap<String,Object> getYesterDayDBLastHourMin(HashMap<String,Object> map) throws Exception;
+}

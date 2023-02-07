@@ -1,0 +1,391 @@
+package com.elsys.data.util;
+
+import java.io.StringReader;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+
+/**
+*
+* Class Name : OneM2MUtil
+* Description
+*    oneM2M 서버의 데이터 파싱 등 웹 어플리케이션에서 동작하는 기능 정의.
+*    여기에 기술되는 기능들은 장치를 관리하는 미들웨어가 아닌 웹 어플리케이션에서 동작해야 하는 기능들이다.
+*    만약 미들웨어에서 동작해야 하는 기능일 경우 여기에 기록해서는 안된다.
+*
+*    예외사항 :
+*    client-server 모델에서 converting 조건들은 server에서 관리하는 디바이스에 종속된 값이기 때문에 client인  웹 어플리케이션에서 접근해서는 안된다.
+*    아래 기능중에 데이터 converting 기능은 웹 어플리케이션에서 동작하는 기능이 아니라 OneM2M에서 웹 어플리케이션에 데이터를 제공하는 스케쥴링 미들웨어에서 해야 하는 기능이다.
+*    그러나 스케쥴링 미들웨어가 없기 때문에 여기에 기능을 구현하였음.
+* Notification
+*    다른 프로젝트에서 사용할 경우 아래에 사용된 StrUtil().getStr()를 아래와 같이 정의해서 사용할 것.
+*    public String getStr(Object obj) {
+*        return obj == null ? "" : String.valueOf(obj).trim();
+*    }
+* Modification Information
+*   수정일                         수정자        수정내용
+*  ----------------------------
+*  2017. 02. 21  okw   최초 생성
+*
+* @author ICT융합사업부 okw
+* @since 2017. 02. 21
+* @version 1.0
+* @see
+*    xml.parsers.DocumentBuilderFactory
+*    JSONArray
+*    JSONObject
+*    JSONParser
+*/
+
+public class OneM2MUtil {
+	public StrUtil sut = new StrUtil();
+
+	/**
+	 * parseXmlM2M
+	 *    oneM2M 서버의 센싱 데이터 XML을 파싱한다.
+	 *    수집된 데이터(json)과 데이터 수집 시간을 추출한다.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 02. 21
+	 * @param String (xml)
+	 * @return ArrayList<HashMap<String,String>>
+	 */
+    public ArrayList<HashMap<String,String>> parseXmlM2M(String xml) throws Exception {
+    	ArrayList<HashMap<String,String>> result = new ArrayList<HashMap<String,String>>();
+    	try{
+			InputSource is = new InputSource(new StringReader(xml));
+			Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(is);
+			doc.getDocumentElement().normalize();
+
+			NodeList nList = doc.getElementsByTagName("m2m:cin");
+
+			for(int iter = 0; iter < nList.getLength(); iter++) {
+				Node nNode = nList.item(iter);
+				if(nNode.getNodeType() == Node.ELEMENT_NODE) {
+					Element element = (Element) nNode;
+					String createTime = element.getElementsByTagName("ct").item(0).getChildNodes().item(0).getNodeValue();
+					String dataRi = element.getElementsByTagName("ri").item(0).getChildNodes().item(0).getNodeValue();
+					String contents = element.getElementsByTagName("con").item(0).getChildNodes().item(0).getNodeValue();
+					HashMap<String,String> bufferMap = new HashMap<String,String>();
+					bufferMap.put("createTime", createTime);
+					bufferMap.put("dataRi", dataRi);
+					bufferMap.put("contents", contents);
+
+					result.add(bufferMap);
+				}
+			}
+    	} catch(Exception e) {
+    		e.printStackTrace();
+    	}
+
+    	return result;
+    }
+
+	/**
+	 * parseJsonOneM2MSensor
+	 *    oneM2M으로 부터 받은 json 데이터에서 센싱 데이터를 추출하고 변환한다.
+	 *    oneM2M의 json 데이터와 데이터 추출에 필요한 instance 정보, converting 정보를 파라미터로 받는다.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 07. 17
+	 * @param String json, HashMap<String,Object> instanceInfo, HashMap<String,Object> convertInfo
+	 * @return HashMap<String,String>
+	 */
+    public HashMap<String,String> parseJsonOneM2MSensor(String json, HashMap<String,Object> instanceInfo, HashMap<String,Object> convertInfo) throws Exception {
+
+    	HashMap<String,String> resultMap = new HashMap<String,String>();
+    	JSONParser jsonParser = new JSONParser();
+    	JSONObject jsonObject = (JSONObject) jsonParser.parse(json);
+    	JSONArray device = (JSONArray) jsonObject.get("d");
+    	int deviceCnt = device.size();
+
+    	for(int iter=0 ; iter < deviceCnt ; iter++) {
+    		// 수집된 데이터의 instanceID가 수집하고자 하는 instance 정보에 있을 경우 값을 추출하여 가공한다.
+    		JSONObject instanceJson = (JSONObject) device.get(iter);
+        	String instanceId = sut.getStr(instanceJson.get("o")) + sut.getStr(instanceJson.get("i"));
+
+    		if(instanceInfo!=null && instanceInfo.containsKey(instanceId)) {
+    			JSONArray resourceList = (JSONArray) instanceJson.get("e");
+    			HashMap<String,HashMap<String,String>> resourceInfoMap = (HashMap<String,HashMap<String,String>>) instanceInfo.get(instanceId);
+
+    			int rCnt = resourceList.size();
+    			for(int iter2=0 ; iter2 < rCnt ; iter2++) {
+    				// json의 resource id(n)가  instanceInfo 안에 있는지 확인한 다음 있을 경우 값을 세팅한다. convert 정보가 있을 경우 convert 한다.
+    				JSONObject resource = (JSONObject) resourceList.get(iter2);
+    				if(resourceInfoMap != null && resourceInfoMap.containsKey(resource.get("n"))) {
+    					HashMap<String,String> resourceInfo = resourceInfoMap.get(resource.get("n"));
+
+    					String val;
+    					if("".equals(resourceInfo.get("convertId"))) {
+        					val = sut.getStr(resource.get("v"));
+    					} else {
+    						val = sut.getStr(convert(sut.getFloat(resource.get("v")), (HashMap<String,Object>)convertInfo.get(resourceInfo.get("convertId"))));
+    					}
+    					resultMap.put(resourceInfo.get("fieldName"), val);
+    				}
+    			}
+
+    		}
+    	}
+
+    	return resultMap;
+    }
+
+	/**
+	 * castingDateFormat : oneM2M의 날짜 형식을 mysql의 datetime 형식으로 변경한다.
+	 * @author ICT융합사업부 okwelsys
+	 * @since 2017. 03. 15
+	 * @param String
+	 * @return String
+	 */
+	public String castingFormatDate(String date) throws Exception {
+		return date.substring(0, 4) + "-" +
+			   date.substring(4, 6) + "-" +
+			   date.substring(6, 8) + " " +
+			   date.substring(9, 11) + ":" +
+			   date.substring(11, 13) + ":" +
+			   date.substring(13, 15);
+	}
+
+
+	/**
+	 * parseJsonM2MControl
+	 *    컨트롤 데이터에서 센싱 데이터의 채널번호와 상태값(ON/OFF)을 추출한다.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 02. 24
+	 * @param String (json)
+	 * @param HashMap<String,Object> (control instnace 정보)
+	 * @return HashMap<String,HashMap<String,String>>
+	 */
+    public HashMap<String,HashMap<String,String>> parseJsonM2MControl(String json, HashMap<String,Object> instanceInfo) throws Exception {
+
+    	HashMap<String,HashMap<String,String>> result = new HashMap<String,HashMap<String,String>>();
+    	JSONParser jsonParser = new JSONParser();
+    	JSONObject jsonObject = (JSONObject) jsonParser.parse(json);
+    	JSONArray device = (JSONArray) jsonObject.get("d");
+    	int deviceCnt = device.size();
+
+    	for(int iter=0 ; iter < deviceCnt ; iter++) {
+    		// 수집된 데이터의 instanceID가 수집하고자 하는 instance 정보에 있을 경우 값을 추출하여 가공한다.
+    		JSONObject instanceJson = (JSONObject) device.get(iter);
+        	String instanceId = sut.getStr(instanceJson.get("o")) + sut.getStr(instanceJson.get("i"));
+
+    		if(instanceInfo!=null && instanceInfo.containsKey(instanceId)) {
+    			JSONArray resourceList = (JSONArray) instanceJson.get("e");
+    			int resourceCnt = resourceList.size();
+    			for(int iter2=0 ; iter2 < resourceCnt ; iter2++) {
+        			JSONObject resource = (JSONObject) resourceList.get(iter2);
+        			if(resource == null) continue;
+
+        			HashMap<String,String> controlVal = result.containsKey(instanceId) ? result.get(instanceId) : new HashMap<String,String>();
+        			controlVal.put(sut.getStr(resource.get("n")), sut.getStr(resource.get("v")));
+        			result.put(instanceId, controlVal);
+    			}
+    		}
+    	}
+
+    	return result;
+    }
+
+	/**
+	 * checkOverTime : 현재 시간이 시작시간 + interval(분)이 지났는지 확인한다.
+	 * @author ICT융합사업부 okwelsys
+	 * @since 2017. 03. 20
+	 * @param String, int
+	 * @return boolean
+	 */
+	public boolean checkOverTime(String startTime, int interval) {
+		boolean result = false;
+		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+		try {
+			Date nowDate = new Date();
+			Date startDate = dateFormat.parse(startTime);
+
+			Calendar calStart = Calendar.getInstance();
+			calStart.setTime(startDate);
+			calStart.add(Calendar.MINUTE, interval);
+			Date endDate = calStart.getTime();
+
+			result = nowDate.after(endDate) ? true : false;
+		} catch (ParseException e) {
+			e.printStackTrace();
+		} catch (NullPointerException e) {
+			return false;
+		}
+
+		return result;
+	}
+
+	/**
+	 * genJsonM2MControl : oneM2M 서버의 컨트롤러 제어에 사용되는 json format 문자열을 만든다.
+	 * @author ICT융합사업부 okwelsys
+	 * @since 2017. 03. 17
+	 * @param int, int
+	 * @return String
+	 */
+    public String genJsonM2MControl(String objectId, String instanceId, String resourceId, int state) throws Exception {
+		return createJsonControlCommand(createJsonControlContents(objectId, instanceId, resourceId, state));
+    }
+
+	/**
+	 * createJsonControlCommand : oneM2M 서버의 컨트롤러 제어에 사용되는 전체 json 문자열을 만든다.
+	 * @author ICT융합사업부 okwelsys
+	 * @since 2017. 03. 17
+	 * @param String
+	 * @return String
+	 */
+    private String createJsonControlCommand(String contents) throws Exception {
+    	JSONObject con = new JSONObject();
+    	JSONObject command = new JSONObject();
+    	con.put("con", contents);
+    	command.put("m2m:cin", con);
+
+    	return command.toJSONString();
+    }
+
+	/**
+	 * createJsonControlContents : json 제어 명령어 중 채널과 상태값 세팅 부분을 만든다.
+	 * @author ICT융합사업부 okwelsys
+	 * @since 2017. 03. 17
+	 * @param int, int
+	 * @return String
+	 */
+    private String createJsonControlContents(String objectId, String instanceId, String resourceId, int state) throws Exception {
+    	JSONArray resourceList = new JSONArray();
+    	JSONObject resource = new JSONObject();
+    	resource.put("n", resourceId);
+    	resource.put("v", state);
+        resourceList.add(resource);
+
+        JSONObject instance = new JSONObject();
+        instance.put("o", sut.getInt(objectId));
+        instance.put("i", sut.getInt(instanceId));
+        instance.put("e", resourceList);
+
+        JSONArray device = new JSONArray();
+        device.add(instance);
+
+        JSONObject contents = new JSONObject();
+        contents.put("d", device);
+
+        return contents.toJSONString(contents);
+    }
+
+    private float convert(float originalValue, HashMap<String,Object> convertInfo) throws Exception {
+		float inMin = sut.getFloat(convertInfo.get("inMin"));
+		float inMax =  sut.getFloat(convertInfo.get("inMax"));
+		float outMin =  sut.getFloat(convertInfo.get("outMin"));
+		float outMax =  sut.getFloat(convertInfo.get("outMax"));
+
+    	if(inMin >= originalValue) return outMin;
+    	//if(inMax <= originalValue) return outMax;
+    	// 2018.02.06 최대값을 벗어나는 값이 들어오면 -1.0f 처리 한다. 김현욱 요청사항.
+    	if(inMax <= originalValue) return -1.0f;
+
+    	return (originalValue - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	/**
+	 * parseJsonOneM2MLoraSensor
+	 *    oneM2M Lora으로 부터 받은 json 데이터에서 센싱 데이터를 추출하고 변환한다.
+	 *    oneM2M Lora의 json 데이터와 데이터 추출에 필요한 instance 정보, converting 정보를 파라미터로 받는다.
+	 * @author ICT융합사업부 okw
+	 * @since 2017. 12. 04
+	 * @param String json, HashMap<Integer,Object> sensorInfo, HashMap<String,Object> convertInfo
+	 * @return HashMap<String,String>
+	 */
+    public HashMap<String,String> parseJsonOneM2MLoraSensor(String contents, HashMap<Integer,Object> sensorInfo, HashMap<String,Object> convertInfo) throws Exception {
+
+    	HashMap<String,String> resultMap = new HashMap<String,String>();
+    	if(contents.length() == 0) return resultMap;
+
+    	int sensorCnt = Integer.parseInt(contents.substring(10,12), 16);
+
+    	for(int iter=0 ; iter<sensorCnt ; iter++) {
+    		int startLen = 12 + 6 * iter;
+    		int sensorId = Integer.parseInt(contents.substring(startLen,startLen+2), 16);
+    		int originalValue = Integer.parseInt(contents.substring(startLen+2,startLen+6), 16);
+
+    		HashMap<String,String> sensorElement = (HashMap<String,String>) sensorInfo.get(sensorId);
+
+			float val;
+			if("".equals(sut.getStr(sensorElement.get("convertId")))) {
+				val = sut.getFloat(originalValue);
+			} else {
+				val = convert(originalValue, (HashMap<String,Object>)convertInfo.get(sensorElement.get("convertId")));
+			}
+			resultMap.put(sensorElement.get("fieldName"), sut.getStr(val));
+    	}
+
+    	return resultMap;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+}

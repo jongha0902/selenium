@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:task="http://www.springframework.org/schema/task"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+				http://www.springframework.org/schema/beans/spring-beans.xsd
+				http://www.springframework.org/schema/task
+				http://www.springframework.org/schema/task/spring-task-4.0.xsd">
+
+
+	<bean id="selenium" class="com.jongha.data.module.controller.EventController" />
+	
+	<task:scheduler id="dataScheduler"/>
+	<task:scheduled-tasks scheduler="dataScheduler">
+		<!-- <task:scheduled ref="레퍼런스빈" method="레퍼런스 메서드" cron="초 분 시 일 월 년" /> -->
+ 			<task:scheduled ref="selenium" method="selenium" cron="0 0/15 * * * *" />
+	</task:scheduled-tasks>
+</beans>
+
+<!--
+시간설정 가이드
+
+초 0-59 , - * /
+분 0-59 , - * /
+시 0-23 , - * /
+일 1-31 , - * ? / L W
+월 1-12 or JAN-DEC , - * /
+요일 1-7 or SUN-SAT , - * ? / L #
+년(옵션) 1970-2099 , - * /
+* : 모든 값
+? : 특정 값 없음
+- : 범위 지정에 사용
+, : 여러 값 지정 구분에 사용
+/ : 초기값과 증가치 설정에 사용
+L : 지정할 수 있는 범위의 마지막 값
+W : 월~금요일 또는 가장 가까운 월/금요일
+# : 몇 번째 무슨 요일 2#1 => 첫 번째 월요일
+
+초 분 시 일 월 주(년)
+ "0 0 12 * * ?" : 아무 요일, 매월, 매일 12:00:00
+ "0 15 10 ? * *" : 모든 요일, 매월, 아무 날이나 10:15:00
+ "0 15 10 * * ?" : 아무 요일, 매월, 매일 10:15:00
+ "0 15 10 * * ? *" : 모든 연도, 아무 요일, 매월, 매일 10:15
+ "0 15 10 * * ? 2005" : 2005년 아무 요일이나 매월, 매일 10:15
+ "0 * 14 * * ?" : 아무 요일, 매월, 매일, 14시 매분 0초
+ "0 0/5 14 * * ?" : 아무 요일, 매월, 매일, 14시 매 5분마다 0초
+ "0 0/5 14,18 * * ?" : 아무 요일, 매월, 매일, 14시, 18시 매 5분마다 0초
+ "0 0-5 14 * * ?" : 아무 요일, 매월, 매일, 14:00 부터 매 14:05까지 매 분 0초
+ "0 10,44 14 ? 3 WED" : 3월의 매 주 수요일, 아무 날짜나 14:10:00, 14:44:00
+ "0 15 10 ? * MON-FRI" : 월~금, 매월, 아무 날이나 10:15:00
+ "0 15 10 15 * ?" : 아무 요일, 매월 15일 10:15:00
+ "0 15 10 L * ?" : 아무 요일, 매월 마지막 날 10:15:00
+ "0 15 10 ? * 6L" : 매월 마지막 금요일 아무 날이나 10:15:00
+ "0 15 10 ? * 6L 2002-2005" : 2002년부터 2005년까지 매월 마지막 금요일 아무 날이나 10:15:00
+ "0 15 10 ? * 6#3" : 매월 3번째 금요일 아무 날이나 10:15:00
+
+또 다른 예제
+
+5분 마다 실행 ex) 00:05, 00:10. 00:15....
+cron = "0 0/5 * * * *"
+
+1시간 마다 실행 ex) 01:00, 02:00, 03:00....
+cron = "0 0 0/1 * * *"
+
+매일 오후 18시마다 실행 ex) 18:00
+cron = "0 0 18 * * *"
+
+2018년도만 매일 오후 18시마다 실행 ex) 18:00
+cron = "0 0 18 * * * 2018"
+
+매일 오후 18시00분-18시55분 사이에 5분 간격으로 실행 ex) 18:00, 18:05.....18:55
+cron = "0 0/5 18 * * *"
+
+매일 오후 9시00분-9시55분, 18시00분-18시55분 사이에 5분 간격으로 실행
+cron = "0 0/5 9,18 * * *"
+
+매일 오후 9시00분-18시55분 사이에 5분 간격으로 실행
+cron = "0 0/5 9-18 * * *"
+
+매달 1일 00시에 실행
+cron = "0 0 0 1 * *"
+
+매년 3월내 월-금요일 10시 30분에만 실행
+cron = "0 30 10 ? 3 MON-FRI"
+
+매월 마지막날 저녁 10시에 실행
+cron = "0 0 10 L * ?"
+-->
+
+
